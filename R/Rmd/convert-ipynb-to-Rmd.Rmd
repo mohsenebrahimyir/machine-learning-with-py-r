@@ -1,0 +1,37 @@
+---
+title: "ML0101FA-Reg-Simple-Linear-Regression"
+author: "Mohsen Ebrahimi <br> mohsenebrahimy.ir"
+date: "29/11/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+	echo = TRUE,
+	message = FALSE,
+	warning = FALSE
+)
+```
+
+## library
+
+```{r}
+library(tidyverse)
+```
+
+## download Data
+
+
+```{r}
+lsfl <- list.files("./../py/ipynb/")
+lsfl <- lsfl %>% subset(grepl("ML0101EN-.*", lsfl))
+
+for (nb_file in lsfl) {
+  rmd_file <- nb_file %>% str_replace(".ipynb", ".Rmd")
+  nb_rmd = rmarkdown:::convert_ipynb(
+    input = sprintf("./../py/ipynb/%s", nb_file),
+    output = sprintf("./Rmd/EN/%s", rmd_file)
+    )
+}
+```
+
