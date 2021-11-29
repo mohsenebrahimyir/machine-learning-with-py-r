@@ -1,0 +1,307 @@
+---
+title: An R Markdown document converted from "./../py/ipynb/ML0101EN-Reg-Simple-Linear-Regression-Co2.ipynb"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+	echo = TRUE,
+	message = FALSE,
+	warning = FALSE,
+	fig.width = 4,
+	fig.height = 3
+)
+```
+
+<center>
+    <img src="https://cf-courses-data.s3.us.cloud-object-storage.appdomain.cloud/IBMDeveloperSkillsNetwork-ML0101EN-SkillsNetwork/labs/Module%202/images/IDSNlogo.png" width="300" alt="cognitiveclass.ai logo"  />
+</center>
+
+# رگرسیون خطی ساده
+
+زمان مورد نیاز: **15** دقیقه
+
+## اهداف
+
+بعد از تکمیل این آزمایشگاه قادر خواهید بود که:
+
+*   استفاده از بسته `tidymodels` برای پیاده سازی رگرسیون خطی ساده
+*   ساخت یک مدل، آموزش آن، آزمایش آن و استفاده از مدل
+
+### فراخوانی بسته‌های مهم
+
+```{r}
+library(tidyverse)
+library(tidymodels)
+```
+
+### دانلود داده
+
+از دستور لینوکسی 
+`!wget` 
+برای دانلود داده از مخزن
+**IBM**
+استفاده خواهیم کرد.
+
+```bash
+$ !wget -O FuelConsumption.csv https://cf-courses-data.s3.us.cloud-object-storage.appdomain.cloud/IBMDeveloperSkillsNetwork-ML0101EN-SkillsNetwork/labs/Module%202/data/FuelConsumptionCo2.csv
+```
+
+مخزن ابری **IBM**: [ثبت نام رایگان](http://cocl.us/ML0101EN-IBM-Offer-CC)
+
+## درک از داده
+
+### `FuelConsumption.csv`:
+
+ما مجموعه داده مصرف سوخت را دانلود کرده ایم,
+**`FuelConsumption.csv`**, 
+که شامل رتبه‌بندی‌های مصرف سوخت خاص مدل و انتشار تخمینی دی اکسید کربن برای خودروهای سبک جدید برای خرده‌فروشی در کانادا است.
+[منبع مجموعه داده](http://open.canada.ca/data/en/dataset/98f1a129-f628-4ce4-b24d-6f16bf24dd64?utm_medium=Exinfluencer\&utm_source=Exinfluencer\&utm_content=000026UJ\&utm_term=10006555\&utm_id=NA-SkillsNetwork-Channel-SkillsNetworkCoursesIBMDeveloperSkillsNetworkML0101ENSkillsNetwork20718538-2021-01-01)
+
+*   **MODELYEAR** e.g. 2014
+*   **MAKE** e.g. Acura
+*   **MODEL** e.g. ILX
+*   **VEHICLE CLASS** e.g. SUV
+*   **ENGINE SIZE** e.g. 4.7
+*   **CYLINDERS** e.g 6
+*   **TRANSMISSION** e.g. A6
+*   **FUEL CONSUMPTION in CITY(L/100 km)** e.g. 9.9
+*   **FUEL CONSUMPTION in HWY (L/100 km)** e.g. 8.9
+*   **FUEL CONSUMPTION COMB (L/100 km)** e.g. 9.2
+*   **CO2 EMISSIONS (g/km)** e.g. 182   --> low --> 0
+
+## خواند داده
+
+```{r}
+df <- read_csv("../data/FuelConsumption.csv")
+
+# take a look at the dataset
+df %>% head()
+```
+
+### اکتشاف داده
+
+بیایید ابتدا یک کاوش توصیفی روی داده های خود داشته باشیم.
+
+```{r}
+# summarize the data
+df %>% glimpse()
+```
+
+بیایید برخی از ویژگی ها را برای کاوش بیشتر انتخاب کنیم.
+
+```{r}
+cdf <- df[c('ENGINESIZE','CYLINDERS','FUELCONSUMPTION_COMB','CO2EMISSIONS')]
+```
+
+```{r}
+cdf %>% head(9)
+```
+
+We می تواند هر یک از این ویژگی ها را ترسیم کند
+
+
+```{r}
+viz <- cdf[c('CYLINDERS','ENGINESIZE','CO2EMISSIONS','FUELCONSUMPTION_COMB')]
+```
+
+
+```{r}
+viz %>%
+  gather() %>% 
+  ggplot(aes(x = value)) +
+  geom_histogram(bins = 10) +
+  facet_wrap("key", scales = "free")
+```
+
+حال، بیایید هر یک از این ویژگی ها را در برابر انتشار ترسیم کنیم تا ببینیم رابطه آنها چقدر خطی است:
+
+
+```{r}
+cdf %>% 
+  ggplot()  + 
+  geom_point(aes(x=FUELCONSUMPTION_COMB, y=CO2EMISSIONS), color="red") +
+  theme_bw()
+```
+
+
+```{r}
+cdf %>% 
+  ggplot()  + 
+  geom_point(aes(x=ENGINESIZE, y=CO2EMISSIONS), color="red") +
+  theme_bw()
+```
+
+## تمرین
+
+سیلندر در مقابل انتشار را ترسیم کنید تا ببینید رابطه آنها چقدر خطی است:
+
+```{r}
+cdf %>% 
+  ggplot()  + 
+  geom_point(aes(x=CYLINDERS, y=CO2EMISSIONS), color="red") +
+  theme_bw()
+```
+
+
+#### ایجاد مجموعه داده های آموزش و آزمایش
+
+
+```{r}
+set.seed(314)
+
+# Create a split object
+(msk <- initial_split(df, prop = 0.8))
+# Build training data set
+(train <- msk %>% training())
+# Build testing data set
+(test <- msk %>% testing())
+```
+
+### مدل رگرسیون خطی ساده
+
+#### توزیع داده‌های آموزش و آزمایش
+
+```{r}
+ggplot()  + 
+  geom_point(data = train, aes(x=ENGINESIZE, y=CO2EMISSIONS, color="train")) +
+  geom_point(data = test, aes(x=ENGINESIZE, y=CO2EMISSIONS, color="test")) +
+  theme_bw()
+```
+
+
+#### مدلسازی
+
+
+```{r}
+regr <- 
+  linear_reg() %>% 
+  set_engine('lm') %>% 
+  set_mode('regression')
+
+regr <- regr %>% fit(CO2EMISSIONS ~ ENGINESIZE, data = train)
+
+# View lm_fit properties
+cat("Intercept:", regr$fit$coefficients[[1]])
+cat("\n")
+cat("Coefficients:", regr$fit$coefficients[[2]])
+```
+
+#### نمودار خروجی
+
+
+```{r}
+ggplot()  + 
+  geom_point(
+    data = train,
+    mapping = aes(x=ENGINESIZE, y=CO2EMISSIONS),
+    color = "blue"
+    ) +
+  geom_abline(
+    intercept = regr$fit$coefficients[[1]], 
+    slope = regr$fit$coefficients[[2]],
+    color = "red"
+    ) +
+  theme_bw()
+```
+
+
+#### ارزیابی
+
+```{r}
+test_results <- 
+  predict(regr, new_data = test) %>% 
+  bind_cols(test)
+
+# View results
+test_results
+```
+
+ما مقادیر واقعی و مقادیر پیش بینی شده را برای محاسبه دقت یک مدل رگرسیون مقایسه می کنیم. معیارهای ارزیابی نقش کلیدی را در توسعه یک مدل ایفا می کنند، زیرا بینشی را در زمینه هایی که نیاز به بهبود دارند ارائه می دهد.
+
+معیارهای ارزیابی مدل متفاوتی وجود دارد، اجازه دهید از MSE برای محاسبه دقت مدل خود بر اساس مجموعه تست استفاده کنیم:
+
+- میانگین قدر مطلق خطاها
+    * [Mean Absolute Error (MAE)]{dir=ltr}
+
+\[
+MAE = \cfrac{1}{n} \sum_{i=1}^{n}|y_{i} - {\hat{y}_{i}}|
+\]
+    
+- خطای میانگین مربعات
+    * [Mean Squared Error (MSE)]{dir=ltr}
+    
+\[
+MSE = \cfrac{1}{n} \sum_{i=1}^{n}(y_{i} - {\hat{y}_{i}})^{2}
+\]
+
+- خطای جذر میانگین مربعات
+    * [Root Mean Square Deviation (RMSD) or Root Mean Square Error (RMSE)]{dir=ltr}
+    
+\[
+RMSE = \sqrt{\cfrac{1}{n} \sum_{i=1}^{n}(y_{i} - {\hat{y}_{i}})^{2}}
+\]
+
+```{r}
+glance(regr)
+```
+
+    
+- خطای مطلق نسبی
+    * [Relative Sum of Absolute Error (RAE)]{dir=ltr}
+    
+\[
+RMAE = \cfrac{
+\sum_{i=1}^{n}|y_{i} - \hat{y}_{i}|
+}{
+\sum_{i=1}^{n}|y_{i} - \bar{y}|
+}
+\]
+
+
+
+- خطای مربعات نسبی
+    * [Relative Sum of Squared Error (RSE)]{dir=ltr}
+    
+\[
+RMSE = \cfrac{
+\sum_{i=1}^{n}(y_{i} - \hat{y}_{i})^{2}
+}{
+\sum_{i=1}^{n}(y_{i} - \bar{y})^{2}
+}
+\]
+
+
+```{r}
+rmse(test_results, 
+     truth = CO2EMISSIONS,
+     estimate = .pred)
+```
+
+
+- ضریب تعیین یا مربع ضریب همبستگی خطی
+    * [Coefficient of Determination or Residual Squared ($R^2$)]{dir=ltr}
+
+\[
+R^2 = 1 - RSE
+\]
+
+
+```{r}
+rsq(test_results, 
+     truth = CO2EMISSIONS,
+     estimate = .pred)
+```
+
+
+```{r}
+ggplot(data = test_results,
+       mapping = aes(x = .pred, y = CO2EMISSIONS)) +
+  geom_point(color = '#006EA1') +
+  geom_abline(intercept = 0, slope = 1, color = 'orange') +
+  labs(title = 'Linear Regression Results - Test Set',
+       x = 'Predicted CO2EMISSIONS',
+       y = 'Actual CO2EMISSIONS')
+```
+
+
