@@ -1,0 +1,159 @@
+
+```{r}
+library(tidyverse)
+```
+
+
+
+
+# رگرسیون
+
+```{r}
+## Sample
+
+df <- data.frame(
+  "x" = runif(100, 0, 10),
+  "y" = rnorm(100, 2, 1)
+) 
+df$y <- df$y + df$x
+```
+
+```{r}
+ggplot(df, aes(x,y)) +
+  geom_point() +
+  geom_smooth(method = "lm", se = F) +
+  theme_minimal()
+```
+
+## مقدمه رگرسیون
+
+## رگرسیون خطی ساده
+
+
+\[
+y_{i} = \hat{\beta_{0}} + \hat{\beta_{1}} x_{i} + e_{i}
+\]
+
+- $i$
+شماره هر مشاهده
+(index)
+
+- $y$
+متغییر وابسته
+(dependent)
+
+- $x$
+متغییر مستقل
+(independent)
+
+- $e$
+خطای مقدار واقعی متغییر مستقل از مقدار تخمین زده شده
+
+\[
+e_{i} = y_{i} - \hat{y_{i}}
+\]
+
+- مجموع کمترین مربعات 
+    
+- $\theta_1$
+شیب نمودار
+(Slope)
+
+\[
+\theta_1 = \cfrac{
+\sum_{1}^{n} (x_i - \bar{x})(y_i - \bar{y})
+}{
+\sum_{1}^{n} (x_i - \bar{x})^{2}
+}
+\]
+
+- $\theta_0$
+عرض از مبدا
+(Intercept)
+
+\[
+\beta_{0} = \bar{y} - \beta_{1}\bar{x}
+\]
+
+- $\bar{x}$
+میانگین
+$x$
+
+$\bar{X} = {X_1 + \cdots + X_n \over n}$
+
+- $\bar{y}$
+میانگین
+$y$
+
+
+
+### محاسبه خطای پیشبینی از مقدار واقعی
+
+- میانگین قدر مطلق خطاها
+    * [Mean Absolute Error (MAE)]{dir=ltr}
+
+\[
+MAE = \cfrac{1}{n} \sum_{i=1}^{n}|y_{i} - {\hat{y}_{i}}|
+\]
+    
+- خطای میانگین مربعات
+    * [Mean Squared Error (MSE)]{dir=ltr}
+    
+\[
+MSE = \cfrac{1}{n} \sum_{i=1}^{n}(y_{i} - {\hat{y}_{i}})^{2}
+\]
+
+
+
+```{r}
+mse <- function(df) {
+  sm <- summary(lm(x~y, df))
+  mean(sm$residuals^2)
+}
+
+mse(df)
+```
+
+
+
+    
+- خطای جذر میانگین مربعات
+    * [Root Mean Square Deviation (RMSD) or Root Mean Square Error (RMSE)]{dir=ltr}
+    
+\[
+RMSE = \sqrt{\cfrac{1}{n} \sum_{i=1}^{n}(y_{i} - {\hat{y}_{i}})^{2}}
+\]
+
+
+    
+- خطای مطلق نسبی
+    * [Relative Absolute Error (RAE)]{dir=ltr}
+    
+\[
+RMSE = \cfrac{
+\sum_{i=1}^{n}|y_{i} - \hat{y}_{i}|
+}{
+\sum_{i=1}^{n}|y_{i} - \bar{y}|
+}
+\]
+
+
+- خطای مربعات نسبی
+    * [Relative Squared Error (RSE)]{dir=ltr}
+    
+\[
+RMSE = \cfrac{
+\sum_{i=1}^{n}(y_{i} - \hat{y}_{i})^{2}
+}{
+\sum_{i=1}^{n}(y_{i} - \bar{y})^{2}
+}
+\]
+
+
+
+- ضریب تعیین یا مربع ضریب همبستگی خطی
+    * [Coefficient of Determination or Residual Squared ($R^2$)]{dir=ltr}
+
+\[
+R^2 = 1 - RSE
+\]
